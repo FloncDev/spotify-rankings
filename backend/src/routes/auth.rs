@@ -28,7 +28,7 @@ async fn login(State(state): State<AppState>) -> impl IntoResponse {
 async fn callback(
     State(state): State<AppState>,
     Query(params): Query<Callback>,
-) -> Result<CookieJar, (StatusCode, String)> {
+) -> Result<(CookieJar, Redirect), (StatusCode, String)> {
     tracing::info!("Received callback with code: {}", params.code);
 
     let response = state
@@ -102,14 +102,19 @@ async fn callback(
     let jar = jar.add(
         Cookie::build(("session_token", token))
             .secure(true)
-            .http_only(true),
+            .http_only(true)
+            .max_age(time::Duration::days(30)),
     );
 
-    Ok(jar)
+    Ok((jar, Redirect::to("http://localhost:5173")))
 }
+
+// Returns OK if they are logged in
+async fn me(_: Spotify) {}
 
 pub fn get_router() -> Router<AppState> {
     Router::new()
         .route("/login", get(login))
         .route("/callback", get(callback))
+        .route("/me", get(me))
 }

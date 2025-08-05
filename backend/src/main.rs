@@ -1,5 +1,10 @@
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    http::{Method, header},
+    routing::get,
+};
 use sqlx::postgres::PgPoolOptions;
+use tower_http::cors::{Any, CorsLayer};
 
 macro_rules! var {
     ($key:expr) => {
@@ -22,6 +27,14 @@ async fn main() {
         .await
         .expect("Failed to connect to the database");
 
+    let cors = CorsLayer::new()
+        .allow_origin(axum::http::HeaderValue::from_static(
+            "http://localhost:5173",
+        ))
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE])
+        .allow_credentials(true);
+
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .merge(spotify_rankings::routes::get_router())
@@ -31,7 +44,8 @@ async fn main() {
             client_secret,
             redirect_uri,
             pool,
-        });
+        })
+        .layer(cors);
 
     tracing::info!("Starting server...");
 

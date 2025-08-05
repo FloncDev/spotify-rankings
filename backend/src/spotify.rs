@@ -4,14 +4,14 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::Utc;
-use serde::{Deserialize, Serialize, de};
+use serde::{Deserialize, Serialize};
 
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct SpotifyResponse {
     pub access_token: String,
-    pub refresh_token: String,
+    pub refresh_token: Option<String>,
     pub expires_in: u64,
 }
 
@@ -36,23 +36,58 @@ pub struct Playlist {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct PlaylistImage {
-    pub height: Option<u32>,
-    pub width: Option<u32>,
-    pub url: String,
+struct Image {
+    url: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct PlaylistResponse {
+struct PlaylistResponse {
+    href: String,
+    id: String,
+    name: String,
+    images: Vec<Image>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Track {
     pub href: String,
     pub id: String,
     pub name: String,
-    pub images: Vec<PlaylistImage>,
+    pub artists: Vec<Artist>,
+    pub image_url: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Track {}
+struct PlaylistTrackObject {
+    track: TrackResponse,
+}
 
+#[derive(Debug, Deserialize)]
+struct TracksResponse {
+    tracks: Vec<TrackResponse>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TrackResponse {
+    href: String,
+    id: String,
+    name: String,
+    artists: Vec<Artist>,
+    album: Album,
+}
+
+#[derive(Debug, Deserialize)]
+struct Album {
+    images: Vec<Image>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Artist {
+    pub name: String,
+    pub href: String,
+}
+
+#[derive(Debug)]
 pub enum SpotifyError {
     InvalidToken,
     BadOauthRequest,
@@ -105,7 +140,7 @@ impl Spotify {
 
         Ok(Self {
             access_token: response.access_token,
-            refresh_token: response.refresh_token,
+            refresh_token: response.refresh_token.unwrap(),
             expires_at,
             spotify_id,
         })
@@ -137,13 +172,18 @@ impl Spotify {
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         self.access_token = response.access_token.clone();
-        self.refresh_token = response.refresh_token.clone();
+        let refresh_token_to_store = if let Some(refresh_token) = response.refresh_token {
+            self.refresh_token = refresh_token.clone();
+            Some(refresh_token)
+        } else {
+            Some(self.refresh_token.clone())
+        };
         self.expires_at = Utc::now() + chrono::Duration::seconds(response.expires_in as i64);
 
         sqlx::query!(
             "UPDATE users SET access_token = $1, refresh_token = $2, expires_at = NOW() + INTERVAL '1 second' * $3 WHERE spotify_id = $4",
             response.access_token,
-            response.refresh_token,
+            refresh_token_to_store,
             response.expires_in as i64,
             self.spotify_id
         )
@@ -161,9 +201,10 @@ impl Spotify {
         url: &str,
     ) -> Result<T, SpotifyError> {
         if self.is_expired() {
-            self.refresh(state)
-                .await
-                .map_err(|_| SpotifyError::BadOauthRequest)?;
+            self.refresh(state).await.map_err(|e| {
+                tracing::error!("Failed to refresh Spotify token: {:#?}", e);
+                SpotifyError::BadOauthRequest
+            })?;
         }
 
         let response = state
@@ -172,9 +213,13 @@ impl Spotify {
             .bearer_auth(&self.access_token)
             .send()
             .await
-            .map_err(|_| SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR))?
+            .map_err(|e| {
+                tracing::error!("Failed to send Spotify API request: {:#?}", e);
+                SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR)
+            })?
             .error_for_status()
             .map_err(|e| {
+                tracing::error!("Spotify API request failed: {:#?}", e);
                 if e.status() == Some(StatusCode::UNAUTHORIZED) {
                     SpotifyError::InvalidToken
                 } else if e.status() == Some(StatusCode::TOO_MANY_REQUESTS) {
@@ -185,7 +230,10 @@ impl Spotify {
             })?
             .json::<T>()
             .await
-            .map_err(|_| SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR))?;
+            .map_err(|e| {
+                tracing::error!("Failed to parse Spotify API response: {:#?}", e);
+                SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR)
+            })?;
 
         Ok(response)
     }
@@ -212,6 +260,71 @@ impl Spotify {
             next_url = response.next;
         }
         Ok(playlists)
+    }
+
+    pub async fn get_playlist_tracks(
+        &mut self,
+        state: &AppState,
+        playlist_id: &str,
+    ) -> Result<Vec<Track>, SpotifyError> {
+        let mut tracks = Vec::new();
+        let mut next_url = Some(format!(
+            "https://api.spotify.com/v1/playlists/{}/tracks",
+            playlist_id
+        ));
+        while let Some(url) = next_url {
+            let response: PaginatedResponse<PlaylistTrackObject> = self.get(state, &url).await?;
+
+            tracks.extend(response.items.into_iter().map(|item| {
+                Track {
+                    href: item.track.href,
+                    id: item.track.id,
+                    name: item.track.name,
+                    artists: item.track.artists,
+                    image_url: item
+                        .track
+                        .album
+                        .images
+                        .into_iter()
+                        .next()
+                        .map_or_else(String::new, |img| img.url),
+                }
+            }));
+            next_url = response.next;
+        }
+        Ok(tracks)
+    }
+
+    pub async fn get_tracks(
+        &mut self,
+        state: &AppState,
+        track_ids: &[String],
+    ) -> Result<Vec<Track>, SpotifyError> {
+        if track_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let ids = track_ids.join(",");
+        let url = format!("https://api.spotify.com/v1/tracks?ids={}", ids);
+
+        let response: TracksResponse = self.get(state, &url).await?;
+
+        Ok(response
+            .tracks
+            .into_iter()
+            .map(|track| Track {
+                href: track.href,
+                id: track.id,
+                name: track.name,
+                artists: track.artists,
+                image_url: track
+                    .album
+                    .images
+                    .into_iter()
+                    .next()
+                    .map_or_else(String::new, |img| img.url),
+            })
+            .collect())
     }
 }
 
