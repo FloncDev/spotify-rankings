@@ -1905,6 +1905,7 @@ dependencies = [
  "serde_json",
  "skillratings",
  "sqlx",
+ "thiserror 2.0.12",
  "time",
  "tokio",
  "tower-http",
