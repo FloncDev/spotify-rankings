@@ -25,7 +25,7 @@
 <div class="flex flex-col items-center justify-center h-screen">
     <h1 class="text-5xl mb-4 text-white">Welcome :)</h1>
     <button
-        class="px-6 py-2 bg-[#1f1f1f] rounded hover:bg-green-600 transition"
+        class="px-6 py-2 bg-[#1f1f1f] rounded hover:bg-green-600 transition cursor-pointer"
         on:click={login}
     >
         <img
