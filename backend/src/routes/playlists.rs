@@ -30,7 +30,7 @@ pub struct RatedTrack {
     pub id: String,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub image_url: String,
+    pub image_url: Option<String>,
     pub rating: f64,
     pub deviation: f64,
     pub volatility: f64,

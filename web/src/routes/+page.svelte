@@ -19,6 +19,12 @@
 
     onMount(() => {
         console.log("Initial logged in status:", $isLoggedIn);
+
+        fetch("/api")
+            .then((response) => response.text())
+            .then((data) => {
+                console.log("API response:", data);
+            });
     });
 </script>
 

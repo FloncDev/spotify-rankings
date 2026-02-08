@@ -4,23 +4,21 @@
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
 
-    let playlists: any[] = [];
+    let playlists: any = [];
 
     $: if (browser && !$isLoggedIn) {
         goto("/");
     }
 
     onMount(async () => {
-        playlists = await fetch("http://localhost:3000/playlists", {
-            credentials: "include",
-        })
+        playlists = await fetch("/api/playlists")
             .then((response) => response.json())
-            .catch(() => {
-                console.error("Failed to fetch playlists");
+            .catch((error) => {
+                console.error("Failed to fetch playlists:", error);
                 return [];
             });
 
-        console.log("Fetched playlists:", playlists);
+        console.log("Fetched playlists:", playlists.length);
     });
 </script>
 

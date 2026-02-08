@@ -39,20 +39,13 @@
 
     onMount(async () => {
         // init tracks for playlist
-        await fetch(`http://localhost:3000/playlists/${slug}`, {
-            credentials: "include",
+        await fetch(`/api/playlists/${slug}`, {
             method: "POST",
         }).catch(() => {
             console.error("Failed to fetch tracks");
         });
 
-        leaderboard = await fetch(
-            `http://localhost:3000/playlists/${slug}/leaderboard`,
-            {
-                credentials: "include",
-                method: "GET",
-            },
-        )
+        leaderboard = await fetch(`/api/playlists/${slug}/leaderboard`)
             .then((response) => {
                 if (!response.ok) {
                     throw new Error("Failed to fetch leaderboard");
@@ -65,13 +58,7 @@
                 return [];
             });
 
-        match = await fetch(
-            `http://localhost:3000/playlists/${slug}/matchmaking`,
-            {
-                credentials: "include",
-                method: "GET",
-            },
-        )
+        match = await fetch(`/api/playlists/${slug}/matchmaking`)
             .then((response) => {
                 if (!response.ok) {
                     throw new Error("Failed to fetch match");
@@ -85,8 +72,7 @@
     });
 
     function choose_winner(songId: string) {
-        fetch(`http://localhost:3000/playlists/${slug}/matchmaking`, {
-            credentials: "include",
+        fetch(`/api/playlists/${slug}/matchmaking`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -105,20 +91,8 @@
             .then(() => {
                 // Fetch new leaderboard and match
                 return Promise.all([
-                    fetch(
-                        `http://localhost:3000/playlists/${slug}/leaderboard`,
-                        {
-                            credentials: "include",
-                            method: "GET",
-                        },
-                    ),
-                    fetch(
-                        `http://localhost:3000/playlists/${slug}/matchmaking`,
-                        {
-                            credentials: "include",
-                            method: "GET",
-                        },
-                    ),
+                    fetch(`/api/playlists/${slug}/leaderboard`),
+                    fetch(`/api/playlists/${slug}/matchmaking`),
                 ]);
             })
             .then(([leaderboardResponse, matchResponse]) => {

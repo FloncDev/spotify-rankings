@@ -54,7 +54,7 @@ pub struct Track {
     pub id: String,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub image_url: String,
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -227,13 +227,12 @@ impl Spotify {
                 } else {
                     SpotifyError::Other(e.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR))
                 }
-            })?
-            .json::<T>()
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to parse Spotify API response: {:#?}", e);
-                SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR)
             })?;
+
+        let response = response.json::<T>().await.map_err(|e| {
+            tracing::error!("Failed to parse Spotify API response({:#?}): {:#?}", url, e);
+            SpotifyError::Other(StatusCode::INTERNAL_SERVER_ERROR)
+        })?;
 
         Ok(response)
     }
@@ -281,13 +280,14 @@ impl Spotify {
                     id: item.track.id,
                     name: item.track.name,
                     artists: item.track.artists,
-                    image_url: item
-                        .track
-                        .album
-                        .images
-                        .into_iter()
-                        .next()
-                        .map_or_else(String::new, |img| img.url),
+                    image_url: Some(
+                        item.track
+                            .album
+                            .images
+                            .into_iter()
+                            .next()
+                            .map_or_else(String::new, |img| img.url),
+                    ),
                 }
             }));
             next_url = response.next;
@@ -317,12 +317,14 @@ impl Spotify {
                 id: track.id,
                 name: track.name,
                 artists: track.artists,
-                image_url: track
-                    .album
-                    .images
-                    .into_iter()
-                    .next()
-                    .map_or_else(String::new, |img| img.url),
+                image_url: Some(
+                    track
+                        .album
+                        .images
+                        .into_iter()
+                        .next()
+                        .map_or_else(String::new, |img| img.url),
+                ),
             })
             .collect())
     }

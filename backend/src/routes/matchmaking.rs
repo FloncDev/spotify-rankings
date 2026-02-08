@@ -47,6 +47,10 @@ async fn matchmaking(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    if songs.len() < 2 {
+        return Err(StatusCode::BAD_REQUEST); // Not enough songs to make a match
+    }
+
     // Do all random operations first to avoid Send issues
     let (song_a_idx, song_b_idx) = {
         let mut rng = rand::rng();
@@ -109,7 +113,7 @@ async fn matchmaking(
 
 async fn matchmaking_result(
     State(state): State<AppState>,
-    mut spotify: Spotify,
+    _: Spotify,
     Json(result): Json<MatchResult>,
 ) -> Result<(), StatusCode> {
     // Update the ratings based on the result
@@ -121,7 +125,7 @@ async fn matchmaking_result(
     );
 
     // Create glicko2 players for both songs
-    let mut player_a = sqlx::query_as!(
+    let player_a = sqlx::query_as!(
         Glicko2Rating,
         "SELECT rating, deviation, volatility FROM songs WHERE song_id = $1",
         result.song_a
@@ -130,7 +134,7 @@ async fn matchmaking_result(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let mut player_b = sqlx::query_as!(
+    let player_b = sqlx::query_as!(
         Glicko2Rating,
         "SELECT rating, deviation, volatility FROM songs WHERE song_id = $1",
         result.song_b

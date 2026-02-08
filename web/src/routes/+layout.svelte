@@ -4,9 +4,7 @@
 	import { isLoggedIn } from "$lib/stores";
 
 	onMount(async () => {
-		let logged_in = await fetch("http://localhost:3000/me", {
-			credentials: "include",
-		})
+		let logged_in = await fetch("/api/me")
 			.then((response) => {
 				if (response.ok) {
 					return true;

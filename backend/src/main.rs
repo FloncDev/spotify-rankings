@@ -4,7 +4,7 @@ use axum::{
     routing::get,
 };
 use sqlx::postgres::PgPoolOptions;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 macro_rules! var {
     ($key:expr) => {
