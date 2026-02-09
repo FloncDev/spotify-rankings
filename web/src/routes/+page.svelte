@@ -8,7 +8,7 @@
     function login() {
         // Redirect the user directly to the backend login endpoint
         if (browser) {
-            window.location.href = "/api/login";
+            window.location.href = "http://localhost:3000/login";
         }
     }
 

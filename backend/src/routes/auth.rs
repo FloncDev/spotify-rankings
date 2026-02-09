@@ -29,7 +29,7 @@ async fn login(State(state): State<AppState>) -> impl IntoResponse {
 async fn callback(
     State(state): State<AppState>,
     Query(params): Query<Callback>,
-) -> Result<(CookieJar, Redirect), (StatusCode, String)> {
+) -> Result<CookieJar, (StatusCode, String)> {
     tracing::info!("Received callback with code: {}", params.code);
 
     let response = state
@@ -107,7 +107,7 @@ async fn callback(
             .max_age(time::Duration::days(30)),
     );
 
-    Ok((jar, Redirect::to("http://localhost:5173")))
+    Ok(jar)
 }
 
 // Returns OK if they are logged in

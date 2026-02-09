@@ -13,9 +13,6 @@ async function proxy({ request, params, fetch, url }: RequestEvent) {
             : await request.arrayBuffer(),
     });
 
-    // Print the response status
-    console.log(`Response status: ${res.status} for ${RUST_API}/${params.routes + url.search} `);
-
     // Pass response straight back to browser
     const headers = new Headers(res.headers);
 

@@ -19,7 +19,7 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/state";
     import SongCard from "./SongCard.svelte";
-    import type { PageProps } from "../$types";
+    import type { PageProps } from "./$types";
 
     let { data }: PageProps = $props();
     let slug = data.slug;
