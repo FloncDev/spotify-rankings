@@ -1,13 +1,5 @@
-<script lang="ts">
-    import { isLoggedIn } from "$lib/stores";
-    import { onMount } from "svelte";
-    import { browser } from "$app/environment";
-    import { goto } from "$app/navigation";
-    import { page } from "$app/state";
-
-    $: slug = page.params.slug;
-
-    interface Song {
+<script module lang="ts">
+    export interface Song {
         href: string;
         id: string;
         name: string;
@@ -18,24 +10,37 @@
         volatility: number;
         total_matches: number;
     }
+</script>
+
+<script lang="ts">
+    import { isLoggedIn } from "$lib/stores";
+    import { onMount } from "svelte";
+    import { browser } from "$app/environment";
+    import { goto } from "$app/navigation";
+    import { page } from "$app/state";
+    import SongCard from "./SongCard.svelte";
+    import type { PageProps } from "../$types";
+
+    let { data }: PageProps = $props();
+    let slug = data.slug;
 
     interface Match {
         song_a: Song;
         song_b: Song;
     }
 
-    let leaderboard: Song[] = [];
-    $: leaderboard;
+    let leaderboard: Song[] = $state([]);
 
-    let match: Match | null = null;
-    $: match;
+    let match: Match | null = $state(null);
 
-    $: if (browser && !$isLoggedIn) {
-        goto("/");
-    } else {
-        console.log("User is logged in");
-        console.log("isLoggedIn:", $isLoggedIn);
-    }
+    let shared_offset = $state(0);
+
+    // $: if (browser && !$isLoggedIn) {
+    //     goto("/");
+    // } else {
+    //     console.log("User is logged in");
+    //     console.log("isLoggedIn:", $isLoggedIn);
+    // }
 
     onMount(async () => {
         // init tracks for playlist
@@ -116,7 +121,7 @@
     }
 </script>
 
-<table class="table-auto w-full">
+<!-- <table class="table-auto w-full">
     <thead>
         <tr>
             <th class="px-4 py-2">Track</th>
@@ -139,11 +144,10 @@
             </tr>
         {/each}
     </tbody>
-</table>
+</table> -->
 
-<!-- Matches -->
 {#if match}
-    <h2 class="text-lg font-bold mt-4">Match</h2>
+    <!-- <h2 class="text-lg font-bold mt-4">Match</h2>
     <div class="flex">
         <button
             type="button"
@@ -181,5 +185,10 @@
             </p>
             <p>Total Matches: {match.song_b.total_matches}</p>
         </button>
+    </div> -->
+
+    <div class="flex flex-col px-15 h-max overflow-hidden py-10">
+        <SongCard song={match.song_a} bind:offset={shared_offset} />
+        <SongCard song={match.song_b} bind:offset={shared_offset} />
     </div>
 {/if}

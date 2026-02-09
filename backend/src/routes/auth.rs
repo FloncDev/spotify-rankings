@@ -19,6 +19,7 @@ struct Callback {
 }
 
 async fn login(State(state): State<AppState>) -> impl IntoResponse {
+    tracing::info!("Received login request");
     Redirect::to(&format!(
         "https://accounts.spotify.com/authorize?response_type=code&client_id={}&redirect_uri={}&scope=playlist-read-private,playlist-read-collaborative,streaming",
         state.client_id, state.redirect_uri
