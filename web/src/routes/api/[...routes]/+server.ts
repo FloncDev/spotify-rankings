@@ -3,6 +3,7 @@ import type { RequestHandler, RequestEvent } from "./$types"
 const RUST_API = "http://localhost:3000";
 
 async function proxy({ request, params, fetch, url }: RequestEvent) {
+    console.log(`Proxying request to ${RUST_API}/${params.routes + url.search}`);
     const res = await fetch(`${RUST_API}/${params.routes + url.search}`, {
         method: request.method,
         headers: {
@@ -13,9 +14,7 @@ async function proxy({ request, params, fetch, url }: RequestEvent) {
             : await request.arrayBuffer(),
     });
 
-    // Pass response straight back to browser
     const headers = new Headers(res.headers);
-
     return new Response(res.body, {
         status: res.status,
         headers,

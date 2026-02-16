@@ -34,6 +34,8 @@
     let match: Match | null = $state(null);
 
     let shared_offset = $state(0);
+    let song_a_position = $state(0);
+    let song_b_position = $state(0);
 
     // $: if (browser && !$isLoggedIn) {
     //     goto("/");
@@ -146,6 +148,8 @@
     </tbody>
 </table> -->
 
+{song_a_position}, {song_b_position}
+
 {#if match}
     <!-- <h2 class="text-lg font-bold mt-4">Match</h2>
     <div class="flex">
@@ -188,7 +192,15 @@
     </div> -->
 
     <div class="flex flex-col px-15 h-max overflow-hidden py-10">
-        <SongCard song={match.song_a} bind:offset={shared_offset} />
-        <SongCard song={match.song_b} bind:offset={shared_offset} />
+        <SongCard
+            song={match.song_a}
+            bind:offset={shared_offset}
+            bind:card_position={song_a_position}
+        />
+        <SongCard
+            song={match.song_b}
+            bind:offset={shared_offset}
+            bind:card_position={song_b_position}
+        />
     </div>
 {/if}

@@ -2,9 +2,13 @@
     import { onMount } from "svelte";
     import type { Song } from "./+page.svelte";
 
-    let { song, offset = $bindable(0) }: { song: Song; offset?: number } =
-        $props();
+    let {
+        song,
+        offset = $bindable(0),
+        card_position = $bindable(0),
+    }: { song: Song; offset?: number; card_position?: number } = $props();
     const max_offset = 150;
+    const brightness_start = 25;
 
     // Dynamically compute the effective multiplier based on whether this card is being swiped
     // If being swiped: use 1 (go in swipe direction)
@@ -83,22 +87,28 @@
 
     // Gradient opacity is based on the offset, so it will be more opaque as you swipe further
     let left_opacity = $derived.by(() => {
-        return Math.max(-offset_clamped / max_offset, 0);
+        const excess = Math.max(-offset_clamped - brightness_start, 0);
+        return Math.min(excess / (max_offset - brightness_start), 1);
     });
     let right_opacity = $derived.by(() => {
-        return Math.max(offset_clamped / max_offset, 0);
+        const excess = Math.max(offset_clamped - brightness_start, 0);
+        return Math.min(excess / (max_offset - brightness_start), 1);
+    });
+
+    $effect(() => {
+        card_position = offset_clamped;
     });
 </script>
 
 <div>
     <div
         class="fixed left-0 pointer-events-none z-10"
-        style="width: 200px; height: {card_height}px; opacity: {left_opacity}; background: radial-gradient(ellipse 100px 250px at left center, rgba(34, 197, 94, 0.6), transparent 70%);"
+        style="width: 200px; height: {card_height}px; opacity: {left_opacity}; background: radial-gradient(ellipse 100px 250px at left center, rgba(239, 68, 68, 0.6), transparent 70%);"
     ></div>
 
     <div
         class="fixed right-0 pointer-events-none z-10"
-        style="width: 200px; height: {card_height}px; opacity: {right_opacity}; background: radial-gradient(ellipse 100px 250px at right center, rgba(239, 68, 68, 0.6), transparent 70%);"
+        style="width: 200px; height: {card_height}px; opacity: {right_opacity}; background: radial-gradient(ellipse 100px 250px at right center, rgba(34, 197, 94, 0.6), transparent 70%);"
     ></div>
 
     <!-- The song card -->
@@ -110,7 +120,6 @@
         id="song-card"
         bind:this={card_element}
     >
-        <!-- {left_opacity} -->
         <img
             src={song.image_url}
             alt={song.name}
